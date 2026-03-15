@@ -1,0 +1,9 @@
+{
+    "contextFiles": [
+      ".cursor/system_prompt.md",
+      ".cursor/rules.md",
+      ".cursor/skills.md",
+      ".cursor/architecture.md",
+      ".cursor/database.md"
+    ]
+  }

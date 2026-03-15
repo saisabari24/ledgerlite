@@ -1,0 +1,155 @@
+// LedgerLite - Multi-tenant Bookkeeping Platform
+// Prisma Schema - PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ AUTH & TENANT ============
+
+enum UserRole {
+  BUSINESS
+  CA
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole
+  tenantId     String?  @map("tenant_id") // Business users belong to a tenant
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant?    @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  caAccess CaAccess[]
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  gstin     String?  @unique
+  pan       String?
+  currency  String   @default("INR")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users          User[]
+  caAccess       CaAccess[]
+  accounts       Account[]
+  journalEntries JournalEntry[]
+  documents      Document[]
+}
+
+enum PermissionLevel {
+  VIEW
+  EDIT
+  FULL
+}
+
+model CaAccess {
+  id              String          @id @default(cuid())
+  caUserId        String          @map("ca_user_id")
+  tenantId        String          @map("tenant_id")
+  permissionLevel PermissionLevel @default(EDIT) @map("permission_level")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  caUser User  @relation(fields: [caUserId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([caUserId, tenantId])
+  @@map("ca_access")
+}
+
+// ============ ACCOUNTING ============
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+model Account {
+  id        String      @id @default(cuid())
+  tenantId  String      @map("tenant_id")
+  code      String
+  name      String
+  type      AccountType
+  balance   Decimal     @default(0) @db.Decimal(18, 2)
+  isGroup   Boolean     @default(false) @map("is_group")
+  parentId  String?     @map("parent_id")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journalLines JournalLine[]
+  parent       Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children     Account[]     @relation("AccountHierarchy")
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, parentId])
+}
+
+enum JournalStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+model JournalEntry {
+  id          String        @id @default(cuid())
+  tenantId    String        @map("tenant_id")
+  date        DateTime      @db.Date
+  description String?
+  status      JournalStatus @default(DRAFT)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines     JournalLine[]
+  documents Document[]
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+model Document {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  filename       String   @map("filename")
+  originalName   String   @map("original_name")
+  mimeType       String   @map("mime_type")
+  size           Int
+  storagePath    String   @map("storage_path")
+  journalEntryId String?  @map("journal_entry_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([journalEntryId])
+}
+
+model JournalLine {
+  id             String   @id @default(cuid())
+  journalEntryId String   @map("journal_entry_id")
+  accountId      String   @map("account_id")
+  debit          Decimal  @default(0) @db.Decimal(18, 2)
+  credit         Decimal  @default(0) @db.Decimal(18, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account     @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId])
+}
