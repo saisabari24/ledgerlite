@@ -57,8 +57,15 @@ model Tenant {
    journalEntries  JournalEntry[]
    documents       Document[]
    printTemplates  PrintTemplate[]
-   items           Item[]
-   stockMovements  StockMovement[]
+    items           Item[]
+    stockMovements  StockMovement[]
+    customers       Customer[]
+    suppliers       Supplier[]
+    salesQuotes     SalesQuote[]
+    salesInvoices   SalesInvoice[]
+    salesPayments   SalesPayment[]
+    purchaseInvoices PurchaseInvoice[]
+    purchasePayments PurchasePayment[]
 }
 
 enum PermissionLevel {
@@ -109,6 +116,10 @@ model Account {
    children     Account[]     @relation("AccountHierarchy")
    stockFromLines StockMovementLine[] @relation("StockFromAccount")
    stockToLines   StockMovementLine[] @relation("StockToAccount")
+   salesInvoiceLines SalesInvoiceLine[] @relation("SalesInvoiceAccount")
+   purchaseInvoiceLines PurchaseInvoiceLine[] @relation("PurchaseInvoiceAccount")
+   salesPayments    SalesPayment[]      @relation("SalesPaymentAccount")
+   purchasePayments PurchasePayment[]   @relation("PurchasePaymentAccount")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -134,6 +145,10 @@ model JournalEntry {
   lines         JournalLine[]
   documents     Document[]
   stockMovement StockMovement?
+  salesInvoice  SalesInvoice?
+  purchaseInvoice PurchaseInvoice?
+  salesPayment  SalesPayment?
+  purchasePayment PurchasePayment?
 
   @@index([tenantId])
   @@index([tenantId, date])
@@ -215,12 +230,16 @@ model Item {
    name        String
    unit        String   @default("nos")
    rate        Decimal  @default(0) @db.Decimal(18, 2)
+   taxRate     Decimal  @default(0) @db.Decimal(5, 2) @map("tax_rate")
    description String?
    createdAt   DateTime @default(now()) @map("created_at")
    updatedAt   DateTime @updatedAt @map("updated_at")
 
-   tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-   stockMovementLines  StockMovementLine[]
+   tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   stockMovementLines   StockMovementLine[]
+   salesQuoteLines      SalesQuoteLine[]
+   salesInvoiceLines    SalesInvoiceLine[]
+   purchaseInvoiceLines PurchaseInvoiceLine[]
 
    @@unique([tenantId, code])
    @@index([tenantId])
@@ -263,4 +282,283 @@ model StockMovementLine {
 
    @@index([stockMovementId])
    @@index([itemId])
+}
+
+// ============ PARTIES ============
+
+model Customer {
+   id       String   @id @default(cuid())
+   tenantId String   @map("tenant_id")
+   name     String
+   email    String?
+   phone    String?
+   gstin    String?
+   pan      String?
+   address  String?
+   city     String?
+   state    String?
+   pincode  String?
+   balance  Decimal  @default(0) @db.Decimal(18, 2)
+   createdAt DateTime @default(now()) @map("created_at")
+   updatedAt DateTime @updatedAt @map("updated_at")
+
+   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   salesQuotes   SalesQuote[]
+   salesInvoices SalesInvoice[]
+   salesPayments SalesPayment[]
+
+   @@index([tenantId])
+}
+
+model Supplier {
+   id       String   @id @default(cuid())
+   tenantId String   @map("tenant_id")
+   name     String
+   email    String?
+   phone    String?
+   gstin    String?
+   pan      String?
+   address  String?
+   city     String?
+   state    String?
+   pincode  String?
+   balance  Decimal  @default(0) @db.Decimal(18, 2)
+   createdAt DateTime @default(now()) @map("created_at")
+   updatedAt DateTime @updatedAt @map("updated_at")
+
+   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   purchaseInvoices PurchaseInvoice[]
+   purchasePayments PurchasePayment[]
+
+   @@index([tenantId])
+}
+
+// ============ SALES ============
+
+enum SalesQuoteStatus {
+   DRAFT
+   SENT
+   ACCEPTED
+   EXPIRED
+}
+
+model SalesQuote {
+   id         String          @id @default(cuid())
+   tenantId   String          @map("tenant_id")
+   quoteNo    String          @map("quote_no")
+   date       DateTime        @db.Date
+   customerId String          @map("customer_id")
+   status     SalesQuoteStatus @default(DRAFT)
+   subtotal   Decimal         @default(0) @db.Decimal(18, 2)
+   tax        Decimal         @default(0) @db.Decimal(18, 2)
+   total      Decimal         @default(0) @db.Decimal(18, 2)
+   description String?
+   createdAt  DateTime        @default(now()) @map("created_at")
+   updatedAt  DateTime        @updatedAt @map("updated_at")
+
+   tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   customer Customer         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+   lines    SalesQuoteLine[]
+
+   @@index([tenantId])
+   @@index([tenantId, quoteNo])
+}
+
+model SalesQuoteLine {
+   id           String   @id @default(cuid())
+   salesQuoteId String   @map("sales_quote_id")
+   itemId       String   @map("item_id")
+   description  String?
+   quantity     Decimal  @default(1) @db.Decimal(18, 2)
+   rate         Decimal  @default(0) @db.Decimal(18, 2)
+   taxRate      Decimal  @default(0) @db.Decimal(5, 2) @map("tax_rate")
+   amount       Decimal  @default(0) @db.Decimal(18, 2)
+   createdAt    DateTime @default(now()) @map("created_at")
+
+   salesQuote SalesQuote @relation(fields: [salesQuoteId], references: [id], onDelete: Cascade)
+   item       Item       @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+   @@index([salesQuoteId])
+}
+
+enum SalesInvoiceStatus {
+   DRAFT
+   UNPAID
+   PARTIALLY_PAID
+   PAID
+}
+
+model SalesInvoice {
+   id             String             @id @default(cuid())
+   tenantId       String             @map("tenant_id")
+   invoiceNo      String             @map("invoice_no")
+   date           DateTime           @db.Date
+   dueDate        DateTime?          @db.Date @map("due_date")
+   customerId     String             @map("customer_id")
+   status         SalesInvoiceStatus @default(DRAFT)
+   subtotal       Decimal            @default(0) @db.Decimal(18, 2)
+   tax            Decimal            @default(0) @db.Decimal(18, 2)
+   total          Decimal            @default(0) @db.Decimal(18, 2)
+   description    String?
+   terms          String?
+   journalEntryId String?            @unique @map("journal_entry_id")
+   createdAt      DateTime           @default(now()) @map("created_at")
+   updatedAt      DateTime           @updatedAt @map("updated_at")
+
+   tenant       Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   customer     Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+   lines        SalesInvoiceLine[]
+   journalEntry JournalEntry?   @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+   allocations  SalesPaymentAllocation[]
+
+   @@index([tenantId])
+   @@index([tenantId, invoiceNo])
+}
+
+model SalesInvoiceLine {
+   id             String   @id @default(cuid())
+   salesInvoiceId String   @map("sales_invoice_id")
+   itemId         String   @map("item_id")
+   accountId      String?  @map("account_id")
+   description    String?
+   quantity       Decimal  @default(1) @db.Decimal(18, 2)
+   rate           Decimal  @default(0) @db.Decimal(18, 2)
+   taxRate        Decimal  @default(0) @db.Decimal(5, 2) @map("tax_rate")
+   amount         Decimal  @default(0) @db.Decimal(18, 2)
+   createdAt      DateTime @default(now()) @map("created_at")
+
+   salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+   item         Item         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+   account      Account?     @relation("SalesInvoiceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+
+   @@index([salesInvoiceId])
+}
+
+model SalesPayment {
+   id             String   @id @default(cuid())
+   tenantId       String   @map("tenant_id")
+   paymentNo      String   @map("payment_no")
+   date           DateTime @db.Date
+   customerId     String   @map("customer_id")
+   mode           String
+   reference      String?
+   amount         Decimal  @default(0) @db.Decimal(18, 2)
+   accountId      String?  @map("account_id")
+   journalEntryId String?  @unique @map("journal_entry_id")
+   createdAt      DateTime @default(now()) @map("created_at")
+   updatedAt      DateTime @updatedAt @map("updated_at")
+
+   tenant       Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   customer     Customer                 @relation(fields: [customerId], references: [id], onDelete: Restrict)
+   account      Account?                 @relation("SalesPaymentAccount", fields: [accountId], references: [id], onDelete: Restrict)
+   journalEntry JournalEntry?            @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+   allocations  SalesPaymentAllocation[]
+
+   @@index([tenantId])
+}
+
+model SalesPaymentAllocation {
+   id             String  @id @default(cuid())
+   salesPaymentId String  @map("sales_payment_id")
+   salesInvoiceId String  @map("sales_invoice_id")
+   amount         Decimal @default(0) @db.Decimal(18, 2)
+   createdAt      DateTime @default(now()) @map("created_at")
+
+   salesPayment SalesPayment @relation(fields: [salesPaymentId], references: [id], onDelete: Cascade)
+   salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Restrict)
+
+   @@unique([salesPaymentId, salesInvoiceId])
+   @@index([salesPaymentId])
+}
+
+// ============ PURCHASES ============
+
+enum PurchaseInvoiceStatus {
+   DRAFT
+   UNPAID
+   PARTIALLY_PAID
+   PAID
+}
+
+model PurchaseInvoice {
+   id             String                @id @default(cuid())
+   tenantId       String                @map("tenant_id")
+   invoiceNo      String                @map("invoice_no")
+   date           DateTime              @db.Date
+   dueDate        DateTime?             @db.Date @map("due_date")
+   supplierId     String                @map("supplier_id")
+   status         PurchaseInvoiceStatus @default(DRAFT)
+   subtotal       Decimal               @default(0) @db.Decimal(18, 2)
+   tax            Decimal               @default(0) @db.Decimal(18, 2)
+   total          Decimal               @default(0) @db.Decimal(18, 2)
+   description    String?
+   terms          String?
+   journalEntryId String?               @unique @map("journal_entry_id")
+   createdAt      DateTime              @default(now()) @map("created_at")
+   updatedAt      DateTime              @updatedAt @map("updated_at")
+
+   tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   supplier     Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+   lines        PurchaseInvoiceLine[]
+   journalEntry JournalEntry?         @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+   allocations  PurchasePaymentAllocation[]
+
+   @@index([tenantId])
+   @@index([tenantId, invoiceNo])
+}
+
+model PurchaseInvoiceLine {
+   id                String   @id @default(cuid())
+   purchaseInvoiceId String   @map("purchase_invoice_id")
+   itemId            String   @map("item_id")
+   accountId         String?  @map("account_id")
+   description       String?
+   quantity          Decimal  @default(1) @db.Decimal(18, 2)
+   rate              Decimal  @default(0) @db.Decimal(18, 2)
+   taxRate           Decimal  @default(0) @db.Decimal(5, 2) @map("tax_rate")
+   amount            Decimal  @default(0) @db.Decimal(18, 2)
+   createdAt         DateTime @default(now()) @map("created_at")
+
+   purchaseInvoice PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+   item            Item            @relation(fields: [itemId], references: [id], onDelete: Restrict)
+   account         Account?        @relation("PurchaseInvoiceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+
+   @@index([purchaseInvoiceId])
+}
+
+model PurchasePayment {
+   id             String   @id @default(cuid())
+   tenantId       String   @map("tenant_id")
+   paymentNo      String   @map("payment_no")
+   date           DateTime @db.Date
+   supplierId     String   @map("supplier_id")
+   mode           String
+   reference      String?
+   amount         Decimal  @default(0) @db.Decimal(18, 2)
+   accountId      String?  @map("account_id")
+   journalEntryId String?  @unique @map("journal_entry_id")
+   createdAt      DateTime @default(now()) @map("created_at")
+   updatedAt      DateTime @updatedAt @map("updated_at")
+
+   tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   supplier     Supplier                   @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+   account      Account?                   @relation("PurchasePaymentAccount", fields: [accountId], references: [id], onDelete: Restrict)
+   journalEntry JournalEntry?              @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+   allocations  PurchasePaymentAllocation[]
+
+   @@index([tenantId])
+}
+
+model PurchasePaymentAllocation {
+   id                 String  @id @default(cuid())
+   purchasePaymentId  String  @map("purchase_payment_id")
+   purchaseInvoiceId  String  @map("purchase_invoice_id")
+   amount             Decimal @default(0) @db.Decimal(18, 2)
+   createdAt          DateTime @default(now()) @map("created_at")
+
+   purchasePayment  PurchasePayment @relation(fields: [purchasePaymentId], references: [id], onDelete: Cascade)
+   purchaseInvoice  PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Restrict)
+
+   @@unique([purchasePaymentId, purchaseInvoiceId])
+   @@index([purchasePaymentId])
 }

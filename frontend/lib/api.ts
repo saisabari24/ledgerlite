@@ -92,6 +92,7 @@ export type Item = {
   name: string;
   unit: string;
   rate: number;
+  taxRate: number;
   description: string | null;
   createdAt: string;
   updatedAt: string;
@@ -122,4 +123,170 @@ export type StockMovementLine = {
   item: Item;
   fromAccount: Account | null;
   toAccount: Account | null;
+};
+
+export type Customer = {
+  id: string;
+  tenantId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Supplier = {
+  id: string;
+  tenantId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SalesQuoteLine = {
+  id: string;
+  itemId: string;
+  description: string | null;
+  quantity: number;
+  rate: number;
+  taxRate: number;
+  amount: number;
+  item: Item;
+};
+
+export type SalesQuote = {
+  id: string;
+  tenantId: string;
+  quoteNo: string;
+  date: string;
+  customerId: string;
+  status: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  description: string | null;
+  customer: Customer;
+  lines: SalesQuoteLine[];
+};
+
+export type SalesInvoiceLine = {
+  id: string;
+  itemId: string;
+  accountId: string | null;
+  description: string | null;
+  quantity: number;
+  rate: number;
+  taxRate: number;
+  amount: number;
+  item: Item;
+  account: Account | null;
+};
+
+export type SalesInvoice = {
+  id: string;
+  tenantId: string;
+  invoiceNo: string;
+  date: string;
+  dueDate?: string | null;
+  customerId: string;
+  status: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  description: string | null;
+  terms: string | null;
+  customer: Customer;
+  lines: SalesInvoiceLine[];
+  allocations?: SalesPaymentAllocation[];
+};
+
+export type SalesPaymentAllocation = {
+  id: string;
+  salesInvoiceId: string;
+  amount: number;
+  salesInvoice: SalesInvoice;
+};
+
+export type SalesPayment = {
+  id: string;
+  tenantId: string;
+  paymentNo: string;
+  date: string;
+  customerId: string;
+  mode: string;
+  reference: string | null;
+  amount: number;
+  accountId: string | null;
+  account: Account | null;
+  customer: Customer;
+  allocations: SalesPaymentAllocation[];
+};
+
+export type PurchaseInvoiceLine = {
+  id: string;
+  itemId: string;
+  accountId: string | null;
+  description: string | null;
+  quantity: number;
+  rate: number;
+  taxRate: number;
+  amount: number;
+  item: Item;
+  account: Account | null;
+};
+
+export type PurchaseInvoice = {
+  id: string;
+  tenantId: string;
+  invoiceNo: string;
+  date: string;
+  dueDate?: string | null;
+  supplierId: string;
+  status: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  description: string | null;
+  terms: string | null;
+  supplier: Supplier;
+  lines: PurchaseInvoiceLine[];
+  allocations?: PurchasePaymentAllocation[];
+};
+
+export type PurchasePaymentAllocation = {
+  id: string;
+  purchaseInvoiceId: string;
+  amount: number;
+  purchaseInvoice: PurchaseInvoice;
+};
+
+export type PurchasePayment = {
+  id: string;
+  tenantId: string;
+  paymentNo: string;
+  date: string;
+  supplierId: string;
+  mode: string;
+  reference: string | null;
+  amount: number;
+  accountId: string | null;
+  account: Account | null;
+  supplier: Supplier;
+  allocations: PurchasePaymentAllocation[];
 };

@@ -10,6 +10,10 @@ import { LedgerModule } from './ledger/ledger.module';
 import { DocumentsModule } from './documents/documents.module';
 import { PrintTemplatesModule } from './print-templates/print-templates.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { CustomersModule } from './customers/customers.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { SalesModule } from './sales/sales.module';
+import { PurchasesModule } from './purchases/purchases.module';
 
 @Module({
   imports: [
@@ -24,6 +28,10 @@ import { InventoryModule } from './inventory/inventory.module';
     DocumentsModule,
     PrintTemplatesModule,
     InventoryModule,
+    CustomersModule,
+    SuppliersModule,
+    SalesModule,
+    PurchasesModule,
   ],
 })
 export class AppModule {}

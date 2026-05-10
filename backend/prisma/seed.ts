@@ -328,6 +328,32 @@ async function main() {
         update: {},
       });
     }
+
+    // Seed sample customers for each tenant
+    const sampleCustomers = [
+      { name: 'Acme Corp', email: 'billing@acme.com', phone: '+91 98765 43210', gstin: '29AABCA1234F1Z5', address: '456 Industrial Zone', city: 'Mumbai', state: 'Maharashtra', pincode: '400001' },
+      { name: 'Beta Enterprises', email: 'info@beta.in', phone: '+91 87654 32109', gstin: '27AABCB5678K2Z6', address: '789 Tech Park', city: 'Bengaluru', state: 'Karnataka', pincode: '560001' },
+    ];
+    for (const c of sampleCustomers) {
+      await prisma.customer.upsert({
+        where: { id: `seed-cust-${tenant.id}-${c.email}` },
+        create: { id: `seed-cust-${tenant.id}-${c.email}`, tenantId: tenant.id, ...c },
+        update: {},
+      });
+    }
+
+    // Seed sample suppliers for each tenant
+    const sampleSuppliers = [
+      { name: 'Global Supplies Co.', email: 'orders@globalsupplies.com', phone: '+91 76543 21098', gstin: '33AABCS9012M3Z7', address: '321 Trade Centre', city: 'Delhi', state: 'Delhi', pincode: '110001' },
+      { name: 'Prime Distributors', email: 'info@primedist.in', phone: '+91 65432 10987', gstin: '29AABCP3456N4Z8', address: '555 Commerce Street', city: 'Chennai', state: 'Tamil Nadu', pincode: '600001' },
+    ];
+    for (const s of sampleSuppliers) {
+      await prisma.supplier.upsert({
+        where: { id: `seed-supp-${tenant.id}-${s.email}` },
+        create: { id: `seed-supp-${tenant.id}-${s.email}`, tenantId: tenant.id, ...s },
+        update: {},
+      });
+    }
   }
 
   console.log('Seed complete:');
