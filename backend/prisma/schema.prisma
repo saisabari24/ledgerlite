@@ -36,15 +36,29 @@ model Tenant {
   gstin     String?  @unique
   pan       String?
   currency  String   @default("INR")
+  logoUrl      String? @map("logo_url")
+  address      String?
+  city         String?
+  state        String?
+  pincode      String?
+  phone        String?
+  tenantEmail  String? @map("tenant_email")
+  termsAndConditions String? @map("terms_and_conditions")
+  bankName         String? @map("bank_name")
+  bankAccountName  String? @map("bank_account_name")
+  bankAccountNumber String? @map("bank_account_number")
+  bankIfsc         String? @map("bank_ifsc")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  users          User[]
-  caAccess       CaAccess[]
-  accounts       Account[]
-  journalEntries JournalEntry[]
-  documents      Document[]
-  printTemplates PrintTemplate[]
+   users           User[]
+   caAccess        CaAccess[]
+   accounts        Account[]
+   journalEntries  JournalEntry[]
+   documents       Document[]
+   printTemplates  PrintTemplate[]
+   items           Item[]
+   stockMovements  StockMovement[]
 }
 
 enum PermissionLevel {
@@ -89,10 +103,12 @@ model Account {
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  journalLines JournalLine[]
-  parent       Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children     Account[]     @relation("AccountHierarchy")
+   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   journalLines JournalLine[]
+   parent       Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
+   children     Account[]     @relation("AccountHierarchy")
+   stockFromLines StockMovementLine[] @relation("StockFromAccount")
+   stockToLines   StockMovementLine[] @relation("StockToAccount")
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -114,9 +130,10 @@ model JournalEntry {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  lines     JournalLine[]
-  documents Document[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines         JournalLine[]
+  documents     Document[]
+  stockMovement StockMovement?
 
   @@index([tenantId])
   @@index([tenantId, date])
@@ -178,7 +195,72 @@ model PrintTemplate {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId])
-  @@index([tenantId, type, isDefault])
-  @@unique([tenantId, name], map: "print_template_tenant_name_unique")
+   @@index([tenantId])
+   @@index([tenantId, type, isDefault])
+   @@unique([tenantId, name], map: "print_template_tenant_name_unique")
+}
+
+// ============ INVENTORY ============
+
+enum StockMovementType {
+   TRANSFER
+   ADJUSTMENT
+   OPENING_BALANCE
+}
+
+model Item {
+   id          String   @id @default(cuid())
+   tenantId    String   @map("tenant_id")
+   code        String
+   name        String
+   unit        String   @default("nos")
+   rate        Decimal  @default(0) @db.Decimal(18, 2)
+   description String?
+   createdAt   DateTime @default(now()) @map("created_at")
+   updatedAt   DateTime @updatedAt @map("updated_at")
+
+   tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   stockMovementLines  StockMovementLine[]
+
+   @@unique([tenantId, code])
+   @@index([tenantId])
+}
+
+model StockMovement {
+   id            String            @id @default(cuid())
+   tenantId      String            @map("tenant_id")
+   movementNo    String            @map("movement_no")
+   status        JournalStatus     @default(DRAFT)
+   date          DateTime          @db.Date
+   movementType  StockMovementType @default(TRANSFER) @map("movement_type")
+   description   String?
+   journalEntryId String?          @unique @map("journal_entry_id")
+   createdAt     DateTime          @default(now()) @map("created_at")
+   updatedAt     DateTime          @updatedAt @map("updated_at")
+
+   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+   lines        StockMovementLine[]
+   journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+
+   @@index([tenantId])
+   @@index([tenantId, date])
+   @@index([tenantId, movementNo])
+}
+
+model StockMovementLine {
+   id               String   @id @default(cuid())
+   stockMovementId  String   @map("stock_movement_id")
+   itemId           String   @map("item_id")
+   quantity         Decimal  @default(0) @db.Decimal(18, 2)
+   fromAccountId    String?  @map("from_account_id")
+   toAccountId      String?  @map("to_account_id")
+   createdAt        DateTime @default(now()) @map("created_at")
+
+   stockMovement  StockMovement @relation(fields: [stockMovementId], references: [id], onDelete: Cascade)
+   item           Item          @relation(fields: [itemId], references: [id], onDelete: Restrict)
+   fromAccount    Account?      @relation("StockFromAccount", fields: [fromAccountId], references: [id], onDelete: Restrict)
+   toAccount      Account?      @relation("StockToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+
+   @@index([stockMovementId])
+   @@index([itemId])
 }

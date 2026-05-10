@@ -24,6 +24,7 @@ export default function JournalPage() {
   ]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -114,6 +115,18 @@ export default function JournalPage() {
     }
   }
 
+  async function deleteEntry(id: string) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setConfirmDeleteId(null);
+    try {
+      await api(`/tenants/${tenantId}/journal/${id}`, { method: 'DELETE', token });
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed');
+    }
+  }
+
   const format = (n: number) =>
     new Intl.NumberFormat('en-IN', { style: 'decimal', minimumFractionDigits: 2 }).format(n);
 
@@ -154,10 +167,11 @@ export default function JournalPage() {
             </button>
           </div>
           <div className="space-y-2">
-            {lines.map((line, i) => {
+              {lines.map((line, i) => {
+              const leafAccounts = accounts.filter((a) => !a.isGroup);
               const filteredAccounts = line.mainType
-                ? accounts.filter((a) => a.type === line.mainType)
-                : accounts;
+                ? leafAccounts.filter((a) => a.type === line.mainType)
+                : leafAccounts;
               return (
                 <div key={i} className="flex flex-wrap gap-2">
                   <select
@@ -243,11 +257,17 @@ export default function JournalPage() {
                     {e.status === 'DRAFT' && (
                       <button
                         onClick={() => post(e.id)}
-                        className="text-[var(--primary)] hover:underline"
+                        className="mr-3 text-[var(--primary)] hover:underline"
                       >
                         Post
                       </button>
                     )}
+                    <button
+                      onClick={() => setConfirmDeleteId(e.id)}
+                      className="text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -255,6 +275,37 @@ export default function JournalPage() {
           </table>
         </div>
       </div>
+
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-96 rounded-lg border border-[var(--border)] bg-[var(--card)] p-6 shadow-lg">
+            <p className="mb-1 text-sm text-[var(--muted-foreground)]">Delete journal entry</p>
+            <p className="mb-4 font-medium">
+              Delete entry from{' '}
+              <span className="text-red-500">
+                {entries.find((e) => e.id === confirmDeleteId)?.date.split('T')[0]}
+              </span>
+              ? This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border border-[var(--border)] bg-[var(--background)] px-4 py-1.5 text-xs font-medium hover:bg-[var(--muted)]"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded bg-red-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                onClick={() => deleteEntry(confirmDeleteId)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

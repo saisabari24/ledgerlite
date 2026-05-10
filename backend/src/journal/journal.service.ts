@@ -196,6 +196,56 @@ export class JournalService {
     });
   }
 
+  async delete(tenantId: string, journalEntryId: string) {
+    const entry = await this.prisma.journalEntry.findFirst({
+      where: { id: journalEntryId, tenantId },
+      include: { lines: true },
+    });
+
+    if (!entry) {
+      throw new BadRequestException('Journal entry not found');
+    }
+
+    if (entry.status === 'POSTED') {
+      return this.prisma.$transaction(async (tx) => {
+        for (const line of entry.lines) {
+          const account = await tx.account.findFirst({
+            where: { id: line.accountId, tenantId },
+          });
+          if (!account) continue;
+
+          const currentBalance = new Decimal(account.balance);
+          const newBalance = currentBalance.minus(line.debit).plus(line.credit);
+
+          await tx.account.update({
+            where: { id: line.accountId },
+            data: { balance: newBalance },
+          });
+        }
+
+        await tx.journalLine.deleteMany({
+          where: { journalEntryId },
+        });
+
+        await tx.journalEntry.delete({
+          where: { id: journalEntryId },
+        });
+
+        return { deleted: true };
+      });
+    }
+
+    await this.prisma.journalLine.deleteMany({
+      where: { journalEntryId },
+    });
+
+    await this.prisma.journalEntry.delete({
+      where: { id: journalEntryId },
+    });
+
+    return { deleted: true };
+  }
+
   async list(tenantId: string, from?: string, to?: string, status?: JournalStatus) {
     const where: { tenantId: string; date?: { gte?: Date; lte?: Date }; status?: JournalStatus } = {
       tenantId,

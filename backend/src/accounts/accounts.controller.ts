@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AccountsService } from './accounts.service';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { TenantService } from '../tenant/tenant.service';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 import { AccountType } from '@prisma/client';
 
 class CreateAccountDto {
@@ -21,6 +21,28 @@ class CreateAccountDto {
   parentId?: string;
 
   @IsOptional()
+  @IsBoolean()
+  isGroup?: boolean;
+}
+
+class UpdateAccountDto {
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsEnum(AccountType)
+  type?: AccountType;
+
+  @IsOptional()
+  parentId?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
   isGroup?: boolean;
 }
 
@@ -69,6 +91,17 @@ export class AccountsController {
   ) {
     await this.tenantService.assertAccess(user, tenantId);
     return this.accountsService.findById(tenantId, accountId);
+  }
+
+  @Patch(':accountId')
+  async update(
+    @Param('tenantId') tenantId: string,
+    @Param('accountId') accountId: string,
+    @Body() dto: UpdateAccountDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    await this.tenantService.assertAccess(user, tenantId);
+    return this.accountsService.update(tenantId, accountId, dto);
   }
 
   @Delete(':accountId')

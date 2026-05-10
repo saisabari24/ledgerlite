@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { JournalService, CreateJournalDto } from './journal.service';
 import { CurrentUser, CurrentUserPayload } from '../auth/decorators/current-user.decorator';
@@ -70,6 +70,16 @@ export class JournalController {
   ) {
     await this.tenantService.assertAccess(user, tenantId);
     return this.journalService.cancel(tenantId, id);
+  }
+
+  @Delete(':id')
+  async delete(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    await this.tenantService.assertAccess(user, tenantId);
+    return this.journalService.delete(tenantId, id);
   }
 
   @Get()

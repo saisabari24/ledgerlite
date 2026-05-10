@@ -34,6 +34,18 @@ export type Tenant = {
   gstin?: string;
   pan?: string;
   currency: string;
+  logoUrl?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  phone?: string | null;
+  tenantEmail?: string | null;
+  termsAndConditions?: string | null;
+  bankName?: string | null;
+  bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
+  bankIfsc?: string | null;
 };
 
 export type Account = {
@@ -71,4 +83,43 @@ export type PrintTemplate = {
   body: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type Item = {
+  id: string;
+  tenantId: string;
+  code: string;
+  name: string;
+  unit: string;
+  rate: number;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StockMovement = {
+  id: string;
+  tenantId: string;
+  movementNo: string;
+  status: string;
+  date: string;
+  movementType: string;
+  description: string | null;
+  journalEntryId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lines: StockMovementLine[];
+};
+
+export type StockMovementLine = {
+  id: string;
+  stockMovementId: string;
+  itemId: string;
+  quantity: number;
+  fromAccountId: string | null;
+  toAccountId: string | null;
+  createdAt: string;
+  item: Item;
+  fromAccount: Account | null;
+  toAccount: Account | null;
 };

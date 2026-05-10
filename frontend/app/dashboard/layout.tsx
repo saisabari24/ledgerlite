@@ -132,6 +132,19 @@ export default function DashboardLayout({
             ],
           },
           {
+            label: 'Inventory',
+            items: [
+              {
+                label: 'Stock Movements',
+                href: `/dashboard/${activeTenantId}/inventory/stock-movements`,
+              },
+              {
+                label: 'Items',
+                href: `/dashboard/${activeTenantId}/inventory/items`,
+              },
+            ],
+          },
+          {
             label: 'Reports',
             items: [
               {
@@ -162,6 +175,15 @@ export default function DashboardLayout({
               {
                 label: 'Print Templates',
                 href: `/dashboard/${activeTenantId}/print-templates`,
+              },
+            ],
+          },
+          {
+            label: 'Settings',
+            items: [
+              {
+                label: 'Company Settings',
+                href: `/dashboard/${activeTenantId}/settings`,
               },
             ],
           },

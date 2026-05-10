@@ -73,19 +73,79 @@ export class AccountsService {
     });
   }
 
+  async update(
+    tenantId: string,
+    id: string,
+    dto: { code?: string; name?: string; type?: AccountType; parentId?: string | null; isGroup?: boolean },
+  ) {
+    const account = await this.prisma.account.findFirst({
+      where: { id, tenantId },
+    });
+    if (!account) {
+      throw new BadRequestException('Account not found');
+    }
+
+    if (dto.code !== undefined && dto.code !== account.code) {
+      const existing = await this.prisma.account.findUnique({
+        where: { tenantId_code: { tenantId, code: dto.code } },
+      });
+      if (existing) {
+        throw new ConflictException(`Account code ${dto.code} already exists`);
+      }
+    }
+
+    if (dto.parentId !== undefined) {
+      if (dto.parentId === null) {
+        // Clearing parent — allowed
+      } else {
+        const parent = await this.prisma.account.findFirst({
+          where: { id: dto.parentId, tenantId },
+        });
+        if (!parent) {
+          throw new BadRequestException('Parent account not found for this tenant');
+        }
+        if (!parent.isGroup) {
+          throw new BadRequestException('Parent account must be a group account');
+        }
+      }
+    }
+
+    return this.prisma.account.update({
+      where: { id },
+      data: {
+        ...(dto.code !== undefined && { code: dto.code }),
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.type !== undefined && { type: dto.type }),
+        ...(dto.parentId !== undefined && { parentId: dto.parentId }),
+        ...(dto.isGroup !== undefined && { isGroup: dto.isGroup }),
+      },
+    });
+  }
+
   async delete(tenantId: string, id: string) {
+    const account = await this.prisma.account.findFirst({
+      where: { id, tenantId },
+    });
+    if (!account) {
+      throw new BadRequestException('Account not found');
+    }
+
     const childrenCount = await this.prisma.account.count({
       where: { tenantId, parentId: id },
     });
     if (childrenCount > 0) {
-      throw new BadRequestException('Cannot delete an account that has child accounts');
+      throw new BadRequestException(
+        `Cannot delete "${account.name}": it has ${childrenCount} child account(s). Remove or reparent them first.`,
+      );
     }
 
     const lineCount = await this.prisma.journalLine.count({
       where: { accountId: id },
     });
     if (lineCount > 0) {
-      throw new BadRequestException('Cannot delete an account that has journal entries');
+      throw new BadRequestException(
+        `Cannot delete "${account.name}": it has ${lineCount} journal line(s). Remove or reassign them first.`,
+      );
     }
 
     await this.prisma.account.delete({

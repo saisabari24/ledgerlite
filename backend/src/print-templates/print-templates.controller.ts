@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PrintTemplateType } from '@prisma/client';
 import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
@@ -102,6 +102,17 @@ export class PrintTemplatesController {
   ) {
     await this.tenantService.assertAccess(user, tenantId);
     return this.printTemplatesService.setDefault(tenantId, id);
+  }
+
+  @Get(':id/render')
+  async render(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Query('sample') sample: string | undefined,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    await this.tenantService.assertAccess(user, tenantId);
+    return this.printTemplatesService.render(tenantId, id);
   }
 }
 
