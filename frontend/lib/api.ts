@@ -59,3 +59,16 @@ export type JournalEntry = {
     account: Account;
   }>;
 };
+
+export type PrintTemplate = {
+  id: string;
+  tenantId: string;
+  name: string;
+  type: 'SALES_INVOICE' | 'PURCHASE_INVOICE' | 'QUOTE' | 'PAYMENT';
+  isDefault: boolean;
+  isCustom: boolean;
+  engine: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};

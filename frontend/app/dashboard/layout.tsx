@@ -63,6 +63,123 @@ export default function DashboardLayout({
   const tenantIdFromPath = pathname.match(/\/dashboard\/([^/]+)/)?.[1];
   const activeTenantId = tenantIdFromPath ?? selectedTenantId;
 
+  const navSections =
+    activeTenantId == null
+      ? []
+      : [
+          {
+            label: 'Dashboard',
+            items: [
+              {
+                label: 'Dashboard',
+                href: `/dashboard/${activeTenantId}`,
+              },
+            ],
+          },
+          {
+            label: 'Sales',
+            items: [
+              {
+                label: 'Sales Quotes',
+                href: `/dashboard/${activeTenantId}/sales-quotes`,
+              },
+              {
+                label: 'Sales Invoices',
+                href: `/dashboard/${activeTenantId}/sales-invoices`,
+              },
+              {
+                label: 'Sales Payments',
+                href: `/dashboard/${activeTenantId}/sales-payments`,
+              },
+              {
+                label: 'Customers',
+                href: `/dashboard/${activeTenantId}/customers`,
+              },
+              {
+                label: 'Sales Items',
+                href: `/dashboard/${activeTenantId}/sales-items`,
+              },
+            ],
+          },
+          {
+            label: 'Purchases',
+            items: [
+              {
+                label: 'Purchase Invoices',
+                href: `/dashboard/${activeTenantId}/purchase-invoices`,
+              },
+              {
+                label: 'Purchase Payments',
+                href: `/dashboard/${activeTenantId}/purchase-payments`,
+              },
+              {
+                label: 'Suppliers',
+                href: `/dashboard/${activeTenantId}/suppliers`,
+              },
+            ],
+          },
+          {
+            label: 'Accounting',
+            items: [
+              {
+                label: 'Chart of Accounts',
+                href: `/dashboard/${activeTenantId}/accounts`,
+              },
+              {
+                label: 'Journal',
+                href: `/dashboard/${activeTenantId}/journal`,
+              },
+            ],
+          },
+          {
+            label: 'Reports',
+            items: [
+              {
+                label: 'General Ledger',
+                href: `/dashboard/${activeTenantId}/reports/general-ledger`,
+              },
+              {
+                label: 'Profit And Loss',
+                href: `/dashboard/${activeTenantId}/reports/profit-loss`,
+              },
+              {
+                label: 'Balance Sheet',
+                href: `/dashboard/${activeTenantId}/reports/balance-sheet`,
+              },
+              {
+                label: 'Trial Balance',
+                href: `/dashboard/${activeTenantId}/reports/trial-balance`,
+              },
+            ],
+          },
+          {
+            label: 'Documents',
+            items: [
+              {
+                label: 'Documents',
+                href: `/dashboard/${activeTenantId}/documents`,
+              },
+              {
+                label: 'Print Templates',
+                href: `/dashboard/${activeTenantId}/print-templates`,
+              },
+            ],
+          },
+          ...(user?.role === 'BUSINESS' && user?.tenantId === activeTenantId
+            ? [
+                {
+                  label: 'Setup',
+                  items: [
+                    {
+                      label: 'Invite CA',
+                      href: `/dashboard/${activeTenantId}/team`,
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ];
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -110,59 +227,36 @@ export default function DashboardLayout({
           </div>
         </div>
       </header>
-      <nav className="border-b border-[var(--border)] bg-[var(--card)]">
-        <div className="mx-auto flex max-w-6xl gap-6 px-4 py-2">
-          <Link
-            href={activeTenantId ? `/dashboard/${activeTenantId}` : '/dashboard'}
-            className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          >
-            Dashboard
-          </Link>
-          {activeTenantId && (
-            <>
-              <Link
-                href={`/dashboard/${activeTenantId}/accounts`}
-                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              >
-                Chart of Accounts
-              </Link>
-              <Link
-                href={`/dashboard/${activeTenantId}/journal`}
-                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              >
-                Journal
-              </Link>
-              <Link
-                href={`/dashboard/${activeTenantId}/ledger`}
-                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              >
-                Ledger
-              </Link>
-              <Link
-                href={`/dashboard/${activeTenantId}/reports`}
-                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              >
-                Reports
-              </Link>
-              <Link
-                href={`/dashboard/${activeTenantId}/documents`}
-                className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-              >
-                Documents
-              </Link>
-              {user?.role === 'BUSINESS' && user?.tenantId === activeTenantId && (
-                <Link
-                  href={`/dashboard/${activeTenantId}/team`}
-                  className="text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                >
-                  Invite CA
-                </Link>
-              )}
-            </>
-          )}
-        </div>
-      </nav>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <div className="mx-auto flex max-w-6xl">
+        <nav className="hidden w-56 border-r border-[var(--border)] bg-[var(--card)] px-3 py-4 md:block">
+          {navSections.map((section) => (
+            <div key={section.label} className="mb-4">
+              <p className="px-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
+                {section.label}
+              </p>
+              <div className="mt-1 space-y-0.5">
+                {section.items.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`block rounded px-2 py-1.5 text-sm ${
+                        active
+                          ? 'bg-[var(--muted)] text-[var(--foreground)]'
+                          : 'text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+        <main className="flex-1 px-4 py-6">{children}</main>
+      </div>
     </div>
   );
 }

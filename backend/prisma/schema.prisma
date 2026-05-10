@@ -44,6 +44,7 @@ model Tenant {
   accounts       Account[]
   journalEntries JournalEntry[]
   documents      Document[]
+  printTemplates PrintTemplate[]
 }
 
 enum PermissionLevel {
@@ -152,4 +153,32 @@ model JournalLine {
 
   @@index([journalEntryId])
   @@index([accountId])
+}
+
+// ============ PRINT TEMPLATES ============
+
+enum PrintTemplateType {
+  SALES_INVOICE
+  PURCHASE_INVOICE
+  QUOTE
+  PAYMENT
+}
+
+model PrintTemplate {
+  id        String           @id @default(cuid())
+  tenantId  String           @map("tenant_id")
+  name      String
+  type      PrintTemplateType
+  isDefault Boolean          @default(false) @map("is_default")
+  isCustom  Boolean          @default(true) @map("is_custom")
+  engine    String           @default("HTML")
+  body      String
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, type, isDefault])
+  @@unique([tenantId, name], map: "print_template_tenant_name_unique")
 }

@@ -8,6 +8,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { JournalModule } from './journal/journal.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { DocumentsModule } from './documents/documents.module';
+import { PrintTemplatesModule } from './print-templates/print-templates.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DocumentsModule } from './documents/documents.module';
     JournalModule,
     LedgerModule,
     DocumentsModule,
+    PrintTemplatesModule,
   ],
 })
 export class AppModule {}

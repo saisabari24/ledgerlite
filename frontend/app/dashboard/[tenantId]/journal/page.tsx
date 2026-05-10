@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api, Account, JournalEntry } from '@/lib/api';
 
+type LineState = {
+  mainType: string;
+  accountId: string;
+  debit: number;
+  credit: number;
+};
+
 export default function JournalPage() {
   const params = useParams();
   const tenantId = params.tenantId as string;
@@ -11,9 +18,9 @@ export default function JournalPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
-  const [lines, setLines] = useState<Array<{ accountId: string; debit: number; credit: number }>>([
-    { accountId: '', debit: 0, credit: 0 },
-    { accountId: '', debit: 0, credit: 0 },
+  const [lines, setLines] = useState<LineState[]>([
+    { mainType: '', accountId: '', debit: 0, credit: 0 },
+    { mainType: '', accountId: '', debit: 0, credit: 0 },
   ]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,13 +38,29 @@ export default function JournalPage() {
   }, [tenantId]);
 
   function addLine() {
-    setLines((prev) => [...prev, { accountId: '', debit: 0, credit: 0 }]);
+    setLines((prev) => [...prev, { mainType: '', accountId: '', debit: 0, credit: 0 }]);
   }
 
-  function updateLine(i: number, field: 'accountId' | 'debit' | 'credit', value: string | number) {
+  function updateLine(i: number, field: keyof LineState, value: string | number) {
     setLines((prev) => {
       const next = [...prev];
-      next[i] = { ...next[i], [field]: value };
+
+      if (field === 'mainType') {
+        // When main type changes, reset account so user picks from filtered list
+        next[i] = { ...next[i], mainType: String(value), accountId: '' };
+      } else if (field === 'accountId') {
+        const accountId = String(value);
+        const account = accounts.find((a) => a.id === accountId);
+        // When subtype (account) changes, auto-fill mainType based on the account
+        if (account) {
+          next[i] = { ...next[i], accountId, mainType: account.type };
+        } else {
+          next[i] = { ...next[i], accountId };
+        }
+      } else {
+        next[i] = { ...next[i], [field]: value };
+      }
+
       return next;
     });
   }
@@ -68,8 +91,8 @@ export default function JournalPage() {
       setEntries((prev) => [created, ...prev]);
       setDescription('');
       setLines([
-        { accountId: '', debit: 0, credit: 0 },
-        { accountId: '', debit: 0, credit: 0 },
+        { mainType: '', accountId: '', debit: 0, credit: 0 },
+        { mainType: '', accountId: '', debit: 0, credit: 0 },
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create');
@@ -93,6 +116,8 @@ export default function JournalPage() {
 
   const format = (n: number) =>
     new Intl.NumberFormat('en-IN', { style: 'decimal', minimumFractionDigits: 2 }).format(n);
+
+  const accountTypes = Array.from(new Set(accounts.map((a) => a.type))).sort();
 
   return (
     <div className="space-y-6">
@@ -129,20 +154,36 @@ export default function JournalPage() {
             </button>
           </div>
           <div className="space-y-2">
-            {lines.map((line, i) => (
-              <div key={i} className="flex flex-wrap gap-2">
-                <select
-                  value={line.accountId}
-                  onChange={(e) => updateLine(i, 'accountId', e.target.value)}
-                  className="flex-1 min-w-[180px] rounded border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                >
-                  <option value="">Select account</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.code} - {a.name}
-                    </option>
-                  ))}
-                </select>
+            {lines.map((line, i) => {
+              const filteredAccounts = line.mainType
+                ? accounts.filter((a) => a.type === line.mainType)
+                : accounts;
+              return (
+                <div key={i} className="flex flex-wrap gap-2">
+                  <select
+                    value={line.mainType}
+                    onChange={(e) => updateLine(i, 'mainType', e.target.value)}
+                    className="min-w-[140px] rounded border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  >
+                    <option value="">Type</option>
+                    {accountTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={line.accountId}
+                    onChange={(e) => updateLine(i, 'accountId', e.target.value)}
+                    className="flex-1 min-w-[180px] rounded border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  >
+                    <option value="">Select account</option>
+                    {filteredAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.code} - {a.name}
+                      </option>
+                    ))}
+                  </select>
                 <input
                   type="number"
                   step="0.01"
@@ -161,8 +202,9 @@ export default function JournalPage() {
                   onChange={(e) => updateLine(i, 'credit', e.target.value ? parseFloat(e.target.value) : 0)}
                   className="w-24 rounded border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                 />
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}

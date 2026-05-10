@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, PrintTemplateType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -97,6 +97,120 @@ async function main() {
       await prisma.account.upsert({
         where: { tenantId_code: { tenantId: tenant.id, code: acc.code } },
         create: { tenantId: tenant.id, ...acc },
+        update: {},
+      });
+    }
+
+    // Seed builtin print templates for each tenant
+    const baseBody = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{{doc.title}}</title>
+  </head>
+  <body class="p-8 text-sm text-slate-900">
+    <header class="mb-6 flex items-start justify-between border-b pb-4">
+      <div>
+        <h1 class="text-xl font-semibold">{{company.name}}</h1>
+        <p class="mt-1">{{company.address}}</p>
+        <p class="mt-1">GSTIN: {{company.gstin}}</p>
+      </div>
+      <div class="text-right">
+        <p class="text-xs uppercase tracking-wide text-slate-500">{{doc.type_label}}</p>
+        <p class="mt-1 font-medium">No: {{doc.number}}</p>
+        <p class="mt-1">Date: {{doc.date}}</p>
+      </div>
+    </header>
+
+    <section class="mb-6">
+      <p class="font-medium">Bill To:</p>
+      <p class="mt-1">{{party.name}}</p>
+      <p class="mt-1">{{party.address}}</p>
+      <p class="mt-1">GSTIN: {{party.gstin}}</p>
+    </section>
+
+    <table class="mb-4 w-full border-collapse text-xs">
+      <thead>
+        <tr class="border-b bg-slate-50">
+          <th class="px-2 py-1 text-left">#</th>
+          <th class="px-2 py-1 text-left">Item</th>
+          <th class="px-2 py-1 text-right">Qty</th>
+          <th class="px-2 py-1 text-right">Rate</th>
+          <th class="px-2 py-1 text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each lines}}
+        <tr class="border-b">
+          <td class="px-2 py-1">{{index}}</td>
+          <td class="px-2 py-1">{{line.description}}</td>
+          <td class="px-2 py-1 text-right">{{line.qty}}</td>
+          <td class="px-2 py-1 text-right">{{line.rate}}</td>
+          <td class="px-2 py-1 text-right">{{line.amount}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <section class="flex justify-end">
+      <div class="w-64 text-xs">
+        <div class="flex justify-between">
+          <span>Subtotal</span>
+          <span>{{totals.subtotal}}</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Tax</span>
+          <span>{{totals.tax}}</span>
+        </div>
+        <div class="mt-2 flex justify-between border-t pt-2 font-medium">
+          <span>Total</span>
+          <span>{{totals.total}}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-6 text-xs text-slate-600">
+      <p class="font-medium">Terms &amp; Conditions</p>
+      <p class="mt-1 whitespace-pre-line">{{doc.terms}}</p>
+    </section>
+  </body>
+</html>
+`.trim();
+
+    const templates = [
+      {
+        name: 'Minimal – Sales Invoice',
+        type: PrintTemplateType.SALES_INVOICE,
+      },
+      {
+        name: 'Minimal – Purchase Invoice',
+        type: PrintTemplateType.PURCHASE_INVOICE,
+      },
+      {
+        name: 'Minimal – Quote',
+        type: PrintTemplateType.QUOTE,
+      },
+      {
+        name: 'Minimal – Payment',
+        type: PrintTemplateType.PAYMENT,
+      },
+    ];
+
+    for (const tpl of templates) {
+      await prisma.printTemplate.upsert({
+        where: {
+          tenantId_name: { tenantId: tenant.id, name: tpl.name },
+        },
+        create: {
+          tenantId: tenant.id,
+          name: tpl.name,
+          type: tpl.type,
+          isDefault: true,
+          isCustom: false,
+          engine: 'HTML',
+          body: baseBody,
+        },
         update: {},
       });
     }
