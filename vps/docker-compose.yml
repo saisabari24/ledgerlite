@@ -24,7 +24,7 @@ services:
       DATABASE_URL: postgresql://ledgerlite:${DB_PASSWORD}@postgres:5432/ledgerlite?schema=public
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      FRONTEND_URL: https://${DOMAIN}
+      FRONTEND_URL: http://${DOMAIN}
       UPLOADS_DIR: /app/uploads
       PORT: 3001
       NODE_ENV: production
@@ -43,7 +43,7 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: https://${DOMAIN}
+      NEXT_PUBLIC_API_URL: http://${DOMAIN}
       NODE_ENV: production
     depends_on:
       - backend
