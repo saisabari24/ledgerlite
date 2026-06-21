@@ -42,8 +42,9 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://${DOMAIN}
     environment:
-      NEXT_PUBLIC_API_URL: http://${DOMAIN}
       NODE_ENV: production
     depends_on:
       - backend
