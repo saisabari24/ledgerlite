@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
@@ -132,14 +132,18 @@ export class TenantController {
   }
 
   @Post(':tenantId/logo')
-  @UseInterceptors(FileInterceptor('logo', { storage: logoStorage, limits: { fileSize: 5 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('logo', { storage: logoStorage, limits: { fileSize: 2 * 1024 * 1024 } }))
   async uploadLogo(
     @Param('tenantId') tenantId: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: CurrentUserPayload,
   ) {
     await this.tenantService.assertAccess(user, tenantId);
-    if (!file) throw new Error('No file provided');
+    if (!file) throw new BadRequestException('No file provided');
+    const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException('Only PNG, JPEG, and WebP images are allowed');
+    }
     const logoUrl = await this.tenantService.uploadLogo(tenantId, file);
     return { logoUrl };
   }

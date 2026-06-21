@@ -1,0 +1,28 @@
+{$DOMAIN} {
+  # Compress responses
+  encode gzip zstd
+
+  # Security headers
+  header {
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    X-XSS-Protection "1; mode=block"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  }
+
+  # API routes go to backend
+  handle /api/* {
+    reverse_proxy backend:3001
+  }
+
+  # Tenant logo serving
+  handle /tenants/* {
+    reverse_proxy backend:3001
+  }
+
+  # Everything else goes to frontend
+  handle {
+    reverse_proxy frontend:3000
+  }
+}
