@@ -185,35 +185,35 @@ function injectSamplePlaceholders(html: string): string {
   let out = html;
 
   // {{settings.*}} and {{company.*}} → settings
-  out = out.replace(/\{\{(settings|company)\.([^}]+)\}\}/g, (_m, _ns, key) => {
+  out = out.replace(/\{\{(settings|company)\.([^}]+)\}\}/g, (_m: string, _ns: string, key: string) => {
     const val = (SAMPLE.settings as any)[key.trim()];
     return val !== undefined && val !== null ? String(val) : _m;
   });
 
   // {{party.*}}
-  out = out.replace(/\{\{party\.([^}]+)\}\}/g, (_m, key) => {
+  out = out.replace(/\{\{party\.([^}]+)\}\}/g, (_m: string, key: string) => {
     const val = (SAMPLE.party as any)[key.trim()];
     return val !== undefined && val !== null ? String(val) : _m;
   });
 
   // {{doc.*}}
-  out = out.replace(/\{\{doc\.([^}]+)\}\}/g, (_m, key) => {
+  out = out.replace(/\{\{doc\.([^}]+)\}\}/g, (_m: string, key: string) => {
     const val = (SAMPLE.doc as any)[key.trim()];
     return val !== undefined && val !== null ? String(val) : _m;
   });
 
   // {{totals.*}}
-  out = out.replace(/\{\{totals\.([^}]+)\}\}/g, (_m, key) => {
+  out = out.replace(/\{\{totals\.([^}]+)\}\}/g, (_m: string, key: string) => {
     const val = (SAMPLE.totals as any)[key.trim()];
     return val !== undefined && val !== null ? String(val) : _m;
   });
 
   // {{#each lines}}...{{/each}}
-  out = out.replace(/\{\{#each lines\}\}([\s\S]*?)\{\{\/each\}\}/g, (_m, block) => {
+  out = out.replace(/\{\{#each lines\}\}([\s\S]*?)\{\{\/each\}\}/g, (_m: string, block: string) => {
     return SAMPLE.lines.map((line) => {
       let row = block;
       row = row.replace(/\{\{index\}\}/g, String(line.index));
-      row = row.replace(/\{\{line\.([^}]+)\}\}/g, (_m2, key) => {
+      row = row.replace(/\{\{line\.([^}]+)\}\}/g, (_m2: string, key: string) => {
         const val = (line as any)[key.trim()];
         return val !== undefined && val !== null ? String(val) : _m2;
       });
